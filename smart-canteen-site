@@ -217,7 +217,7 @@
                         验证身份
                     </button>
                 </form>
-                <p class="mt-4 text-xs text-gray-400">默认演示账号: admin / admin123</p>
+                <p class="mt-4 text-xs text-gray-400">默认演示账号: 输入账户 / 输入密码</p>
             </div>
 
             <!-- Admin Dashboard (Shown if logged in) -->
@@ -348,8 +348,8 @@
         // ==========================================
         // 🔴 配置区域 (请在此填入您的真实 Supabase 信息)
         // ==========================================
-        let supabaseUrl = 'https://pmvsvlekrdluealmgwtg.supabase.co'; 
-        let supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtdnN2bGVrcmRsdWVhbG1nd3RnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUyMDA2MjMsImV4cCI6MjA4MDc3NjYyM30.JOotnUvWPLVMPbR_BMR0pkQU-LnM_D3Lo5KpMTcppZs'; 
+        let supabaseUrl = 'https://zjwqbyijjxoalzchtjrz.supabase.co'; 
+        let supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpqd3FieWlqanhvYWx6Y2h0anJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUyNDM0MTksImV4cCI6MjA4MDgxOTQxOX0.FbPI3J9a8AsdvtpiNIeZ0Ia8dMXutFbuTc_T0ymnFhw'; 
         // ==========================================
 
         // Load config from local storage if available
