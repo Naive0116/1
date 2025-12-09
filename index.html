@@ -454,7 +454,7 @@
 
             // --- RENDER & HELPERS ---
             checkAdminAccess: () => app.switchView('admin'),
-            login: (e) => { e.preventDefault(); if(document.getElementById('admin-user').value==='请输入账号'&&document.getElementById('admin-pass').value==='请输入密码'){state.isAdmin=true;document.getElementById('admin-login-panel').addClass('hidden');document.getElementById('admin-dashboard').removeClass('hidden');} },
+            login: (e) => { e.preventDefault(); if(document.getElementById('admin-user').value==='gly123'&&document.getElementById('admin-pass').value==='123456'){state.isAdmin=true;document.getElementById('admin-login-panel').addClass('hidden');document.getElementById('admin-dashboard').removeClass('hidden');} },
             logout: () => location.reload(),
             switchAdminMode: (mode) => { state.adminMode = mode; document.getElementById('admin-mode-daily').classList.toggle('hidden', mode!=='daily'); document.getElementById('admin-mode-weekly').classList.toggle('hidden', mode!=='weekly'); },
             switchView: (v) => { state.currentView=v; ['home','stats','admin'].forEach(id=>{document.getElementById('nav-'+id).classList.toggle('bg-black',id===v);document.getElementById('nav-'+id).classList.toggle('text-white',id===v);}); ['view-home','view-stats','view-admin'].forEach(el=>document.getElementById(el).classList.add('hidden')); document.getElementById('view-'+v).classList.remove('hidden'); if(v==='stats') app.renderAll(); },
@@ -538,4 +538,5 @@
     </script>
 </body>
 </html>
+
 
