@@ -37,8 +37,10 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .loader { width: 20px; height: 20px; border: 2px solid #E5E5EA; border-bottom-color: #007AFF; border-radius: 50%; animation: rotation 1s linear infinite; }
         @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        /* Tomorrow's Preview Style */
+        /* Preview Card Style */
         .preview-card { opacity: 0.8; border: 1px dashed #d1d5db; }
+        .active-day-btn { background-color: #000; color: #fff; }
+        .inactive-day-btn { background-color: #f3f4f6; color: #6b7280; }
     </style>
 </head>
 <body class="text-ios-text font-sans min-h-screen pb-24">
@@ -46,7 +48,7 @@
     <!-- Loading -->
     <div id="init-overlay" class="fixed inset-0 bg-white z-[100] flex flex-col items-center justify-center transition-opacity duration-700">
         <div class="loader mb-4 w-8 h-8 border-4"></div>
-        <p class="text-gray-400 text-sm font-medium">Loading Menu...</p>
+        <p class="text-gray-400 text-sm font-medium">System Initializing...</p>
     </div>
 
     <!-- Nav -->
@@ -57,8 +59,8 @@
                 <span class="font-semibold text-lg tracking-tight text-black">TastyTrack</span>
             </div>
             <div class="hidden md:flex space-x-1 bg-gray-100/50 p-1 rounded-full backdrop-blur-sm">
-                <button onclick="app.switchView('home')" id="nav-home" class="px-5 py-1.5 rounded-full text-sm font-medium transition-all text-gray-500 hover:text-black">今日与预告</button>
-                <button onclick="app.switchView('stats')" id="nav-stats" class="px-5 py-1.5 rounded-full text-sm font-medium transition-all text-gray-500 hover:text-black">趋势看板</button>
+                <button onclick="app.switchView('home')" id="nav-home" class="px-5 py-1.5 rounded-full text-sm font-medium transition-all text-gray-500 hover:text-black">主页</button>
+                <button onclick="app.switchView('stats')" id="nav-stats" class="px-5 py-1.5 rounded-full text-sm font-medium transition-all text-gray-500 hover:text-black">看板</button>
                 <button onclick="app.checkAdminAccess()" id="nav-admin" class="px-5 py-1.5 rounded-full text-sm font-medium transition-all text-gray-500 hover:text-black">管理后台</button>
             </div>
             <button onclick="app.openConfig()" class="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors text-gray-600"><i class="fa-solid fa-gear text-sm"></i></button>
@@ -77,12 +79,14 @@
 
         <!-- VIEW 1: HOME (TODAY & PREVIEW) -->
         <section id="view-home" class="space-y-10">
-            
             <!-- Header -->
             <div class="flex justify-between items-end">
                 <div>
                     <h1 class="text-3xl md:text-4xl font-bold tracking-tight text-black">今日供应</h1>
-                    <p class="text-gray-500 mt-1" id="display-date-today">YYYY-MM-DD</p>
+                    <p class="text-gray-500 mt-1 flex items-center gap-2">
+                        <span id="display-date-today">YYYY-MM-DD</span> 
+                        <span id="display-weekday-today" class="bg-gray-100 px-2 py-0.5 rounded text-xs">周-</span>
+                    </p>
                 </div>
                 <!-- Meal Filter -->
                 <div class="bg-white p-1 rounded-full shadow-apple inline-flex">
@@ -97,15 +101,12 @@
                 <!-- JS Injected -->
             </div>
 
-            <hr class="border-gray-200">
-
-            <!-- Tomorrow's Preview -->
-            <div>
-                <h2 class="text-2xl font-bold tracking-tight text-gray-400 flex items-center gap-2">
+            <div class="border-t border-gray-200 pt-8">
+                <h2 class="text-2xl font-bold tracking-tight text-gray-400 flex items-center gap-2 mb-6">
                     <i class="fa-regular fa-calendar-check"></i> 明日预告
                     <span class="text-sm font-normal text-gray-400 bg-gray-100 px-2 py-1 rounded-lg" id="display-date-tmrw">Loading...</span>
                 </h2>
-                <div id="tmrw-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6 opacity-75 hover:opacity-100 transition-opacity">
+                <div id="tmrw-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-75 hover:opacity-100 transition-opacity">
                     <!-- JS Injected -->
                 </div>
             </div>
@@ -114,20 +115,14 @@
         <!-- VIEW 2: STATS -->
         <section id="view-stats" class="hidden space-y-8">
             <div class="bg-white rounded-3xl p-8 shadow-apple border border-white/50">
-                <h2 class="text-2xl font-bold tracking-tight mb-6">点评热度排行</h2>
+                <h2 class="text-2xl font-bold tracking-tight mb-6">点评热度趋势</h2>
                 <div class="chart-container h-64">
                     <canvas id="rankingChart"></canvas>
                 </div>
             </div>
-
             <div class="bg-white rounded-3xl p-8 shadow-apple border border-white/50">
-                <h2 class="text-2xl font-bold tracking-tight mb-6 flex items-center gap-2">
-                    <span class="bg-ios-blue text-white w-6 h-6 rounded-full flex items-center justify-center text-xs"><i class="fa-solid fa-comment"></i></span>
-                    实时评价墙
-                </h2>
-                <div id="live-comments-list" class="space-y-4 max-h-[500px] overflow-y-auto pr-2 no-scrollbar">
-                    <!-- JS Injected -->
-                </div>
+                <h2 class="text-2xl font-bold tracking-tight mb-6">实时评价墙</h2>
+                <div id="live-comments-list" class="space-y-4 max-h-[500px] overflow-y-auto pr-2 no-scrollbar"></div>
             </div>
         </section>
 
@@ -137,50 +132,110 @@
             <div id="admin-login-panel" class="max-w-md mx-auto mt-20 bg-white rounded-3xl shadow-2xl p-10 text-center">
                 <h2 class="text-2xl font-bold mb-6">管理员登录</h2>
                 <form id="login-form" class="space-y-4">
-                    <input type="text" id="admin-user" class="w-full bg-gray-50 border-0 rounded-xl px-4 py-3" placeholder="Account">
-                    <input type="password" id="admin-pass" class="w-full bg-gray-50 border-0 rounded-xl px-4 py-3" placeholder="Password">
+                    <input type="text" id="admin-user" class="w-full bg-gray-50 border-0 rounded-xl px-4 py-3" placeholder="Account (admin)">
+                    <input type="password" id="admin-pass" class="w-full bg-gray-50 border-0 rounded-xl px-4 py-3" placeholder="Password (admin123)">
                     <button type="submit" class="w-full bg-black text-white font-bold rounded-xl py-3 mt-4">Login</button>
                 </form>
             </div>
 
             <!-- Dashboard -->
             <div id="admin-dashboard" class="hidden space-y-8">
-                <div class="flex justify-between items-center bg-black text-white rounded-3xl p-8">
-                    <div><h2 class="text-3xl font-bold">菜单排期管理</h2><p class="text-gray-400 text-sm mt-1">录入未来一周的菜谱</p></div>
-                    <button onclick="app.logout()" class="px-4 py-2 bg-gray-800 rounded-full text-sm">退出</button>
+                <div class="flex justify-between items-center bg-black text-white rounded-3xl p-8 shadow-apple-hover">
+                    <div><h2 class="text-3xl font-bold">后台管理</h2><p class="text-gray-400 text-sm mt-1">排期与维护</p></div>
+                    <div class="flex gap-2">
+                        <button onclick="app.switchAdminMode('daily')" class="px-4 py-2 bg-white/20 rounded-full text-xs backdrop-blur-md hover:bg-white/30 transition">每日明细</button>
+                        <button onclick="app.switchAdminMode('weekly')" class="px-4 py-2 bg-ios-blue text-white rounded-full text-xs shadow-lg hover:brightness-110 transition">周常模板</button>
+                        <button onclick="app.logout()" class="px-4 py-2 bg-red-500/20 text-red-300 rounded-full text-xs hover:bg-red-500/30 transition">退出</button>
+                    </div>
                 </div>
 
-                <!-- Add Dish -->
-                <div class="bg-white p-6 rounded-3xl shadow-apple">
-                    <form id="add-dish-form" class="space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label class="text-xs font-bold text-gray-400 uppercase ml-1">供应日期</label>
-                                <input type="date" id="new-date" class="w-full bg-gray-50 border-0 rounded-xl px-4 py-3 focus:ring-2 focus:ring-ios-blue/30" required>
-                            </div>
-                            <div>
-                                <label class="text-xs font-bold text-gray-400 uppercase ml-1">时段</label>
-                                <select id="new-meal" class="w-full bg-gray-50 border-0 rounded-xl px-4 py-3">
+                <!-- MODE A: WEEKLY TEMPLATE (Hidden by default) -->
+                <div id="admin-mode-weekly" class="hidden space-y-6 animate-fade-in">
+                    <div class="bg-blue-50 border border-blue-100 p-4 rounded-2xl flex items-start gap-3">
+                        <i class="fa-solid fa-circle-info text-blue-500 mt-1"></i>
+                        <div class="text-sm text-blue-800">
+                            <p class="font-bold">这是周常模板设置</p>
+                            <p>在这里设置每周一到周日的固定菜谱。设置完成后，点击下方的“生成下周菜单”将模板应用到具体日期。</p>
+                        </div>
+                    </div>
+
+                    <!-- Weekday Selector -->
+                    <div class="flex overflow-x-auto gap-2 pb-2 no-scrollbar" id="weekday-selector">
+                        <!-- JS Generated Buttons -->
+                    </div>
+
+                    <!-- Add Template Dish -->
+                    <div class="bg-white p-6 rounded-3xl shadow-apple">
+                        <h3 class="font-bold mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-calendar-week text-ios-blue"></i> 
+                            设置 <span id="current-template-day-name" class="text-ios-blue">周一</span> 模板
+                        </h3>
+                        <form id="add-template-form" class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <select id="tpl-meal" class="w-full bg-gray-50 border-0 rounded-xl px-4 py-3">
                                     <option value="breakfast">早餐</option>
                                     <option value="lunch">午餐</option>
                                     <option value="dinner">晚餐</option>
                                 </select>
+                                <input type="number" id="tpl-price" class="w-full bg-gray-50 border-0 rounded-xl px-4 py-3" placeholder="价格 (¥)">
                             </div>
+                            <input type="text" id="tpl-name" class="w-full bg-gray-50 border-0 rounded-xl px-4 py-3" placeholder="菜品名称 (例如: 模板-红烧肉)" required>
+                            <button type="submit" class="w-full bg-ios-blue text-white font-bold rounded-xl py-3 hover:brightness-105 transition-all">添加到该日模板</button>
+                        </form>
+                    </div>
+
+                    <!-- Template List -->
+                    <div class="bg-white rounded-3xl shadow-apple overflow-hidden">
+                        <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                            <h3 class="font-bold text-gray-500 text-sm">当前选中日期的模板菜品</h3>
+                            <button onclick="app.generateNextWeek()" class="bg-black text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:scale-105 transition-transform">
+                                <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> 应用模板到下周
+                            </button>
                         </div>
-                        <input type="text" id="new-name" class="w-full bg-gray-50 border-0 rounded-xl px-4 py-3" placeholder="菜品名称" required>
-                        <input type="number" id="new-price" class="w-full bg-gray-50 border-0 rounded-xl px-4 py-3" placeholder="价格 (¥)">
-                        <button type="submit" class="w-full bg-ios-green text-white font-bold rounded-xl py-3 hover:brightness-105 transition-all">发布菜品</button>
-                    </form>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left">
+                                <thead class="bg-white text-gray-400"><tr><th class="px-6 py-3">菜名</th><th class="px-6 py-3">时段</th><th class="px-6 py-3 text-right">操作</th></tr></thead>
+                                <tbody id="template-list" class="divide-y divide-gray-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- List -->
-                <div class="bg-white rounded-3xl shadow-apple overflow-hidden">
-                    <div class="p-4 border-b border-gray-100 bg-gray-50"><h3 class="font-bold text-gray-500 text-sm">全量菜品库 (按日期倒序)</h3></div>
-                    <div class="overflow-x-auto max-h-[400px]">
-                        <table class="w-full text-sm text-left">
-                            <thead class="bg-white text-gray-400"><tr><th class="px-6 py-3">日期</th><th class="px-6 py-3">菜名</th><th class="px-6 py-3">时段</th><th class="px-6 py-3 text-right">操作</th></tr></thead>
-                            <tbody id="admin-list" class="divide-y divide-gray-100"></tbody>
-                        </table>
+                <!-- MODE B: DAILY MANAGEMENT (Default) -->
+                <div id="admin-mode-daily" class="space-y-6 animate-fade-in">
+                    <!-- Add Specific Dish -->
+                    <div class="bg-white p-6 rounded-3xl shadow-apple">
+                        <h3 class="font-bold mb-4">添加/调整特定日期菜品</h3>
+                        <form id="add-dish-form" class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-xs font-bold text-gray-400 uppercase ml-1">日期</label>
+                                    <input type="date" id="new-date" class="w-full bg-gray-50 border-0 rounded-xl px-4 py-3 focus:ring-2 focus:ring-ios-blue/30" required>
+                                </div>
+                                <div>
+                                    <label class="text-xs font-bold text-gray-400 uppercase ml-1">时段</label>
+                                    <select id="new-meal" class="w-full bg-gray-50 border-0 rounded-xl px-4 py-3">
+                                        <option value="breakfast">早餐</option>
+                                        <option value="lunch">午餐</option>
+                                        <option value="dinner">晚餐</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <input type="text" id="new-name" class="w-full bg-gray-50 border-0 rounded-xl px-4 py-3" placeholder="菜品名称" required>
+                            <input type="number" id="new-price" class="w-full bg-gray-50 border-0 rounded-xl px-4 py-3" placeholder="价格 (¥)">
+                            <button type="submit" class="w-full bg-ios-green text-white font-bold rounded-xl py-3 hover:brightness-105 transition-all">发布到该日</button>
+                        </form>
+                    </div>
+
+                    <!-- Full List -->
+                    <div class="bg-white rounded-3xl shadow-apple overflow-hidden">
+                        <div class="p-4 border-b border-gray-100 bg-gray-50"><h3 class="font-bold text-gray-500 text-sm">历史菜品明细 (实际排期)</h3></div>
+                        <div class="overflow-x-auto max-h-[400px]">
+                            <table class="w-full text-sm text-left">
+                                <thead class="bg-white text-gray-400"><tr><th class="px-6 py-3">日期</th><th class="px-6 py-3">菜名</th><th class="px-6 py-3">时段</th><th class="px-6 py-3 text-right">操作</th></tr></thead>
+                                <tbody id="admin-list" class="divide-y divide-gray-100"></tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -218,8 +273,8 @@
         // ==========================================
         // 🔴 填入你的 Supabase 信息
         // ==========================================
-        let supabaseUrl = 'https://zjwqbyijjxoalzchtjrz.supabase.co'; 
-        let supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpqd3FieWlqanhvYWx6Y2h0anJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUyNDM0MTksImV4cCI6MjA4MDgxOTQxOX0.FbPI3J9a8AsdvtpiNIeZ0Ia8dMXutFbuTc_T0ymnFhw'; 
+        let supabaseUrl = 'https://YOUR_PROJECT_ID.supabase.co'; 
+        let supabaseKey = 'YOUR_ANON_KEY'; 
         // ==========================================
 
         if(localStorage.getItem('sb_url')) supabaseUrl = localStorage.getItem('sb_url');
@@ -230,27 +285,29 @@
             currentView: 'home', 
             currentMeal: 'lunch', 
             isAdmin: false, 
-            dishes: [], 
+            dishes: [], // Specific date dishes
+            templates: [], // Rotating template dishes
             comments: [],
             todayStr: new Date().toISOString().split('T')[0],
-            rankingChart: null // Track chart instance
+            rankingChart: null,
+            adminMode: 'daily', // 'daily' or 'weekly'
+            currentTemplateDay: 1 // 1=Mon, 0=Sun
         };
 
-        // Helper to get future dates
-        const getFutureDate = (days) => {
-            const d = new Date();
-            d.setDate(d.getDate() + days);
-            return d.toISOString().split('T')[0];
-        };
+        const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
         const app = {
             init: async () => {
                 // Set Header Dates
+                const today = new Date();
                 document.getElementById('display-date-today').innerText = state.todayStr;
-                document.getElementById('display-date-tmrw').innerText = getFutureDate(1);
+                document.getElementById('display-weekday-today').innerText = weekdays[today.getDay()];
                 
-                // Set Admin Date Picker Default
+                const tmrw = new Date(today); tmrw.setDate(tmrw.getDate()+1);
+                document.getElementById('display-date-tmrw').innerText = tmrw.toISOString().split('T')[0] + " " + weekdays[tmrw.getDay()];
                 document.getElementById('new-date').value = state.todayStr;
+
+                app.renderWeekdaySelector();
 
                 if (supabaseUrl.includes('YOUR_PROJECT') || !supabaseUrl) {
                     alert('请点击右上角齿轮配置数据库连接');
@@ -265,14 +322,20 @@
             },
 
             fetchData: async () => {
-                const { data: d } = await supabaseClient.from('dishes').select('*').order('serve_date', {ascending: true});
+                // Fetch REAL dishes (is_template = false)
+                const { data: d } = await supabaseClient.from('dishes').select('*').eq('is_template', false).order('serve_date', {ascending: true});
+                // Fetch TEMPLATES (is_template = true)
+                const { data: t } = await supabaseClient.from('dishes').select('*').eq('is_template', true).order('created_at', {ascending: true});
+                
                 const { data: c } = await supabaseClient.from('comments').select('*').order('created_at', {ascending: false}).limit(30);
+                
                 state.dishes = d || [];
+                state.templates = t || [];
                 state.comments = c || [];
                 app.renderAll();
             },
 
-            // --- ADMIN ---
+            // --- ADMIN LOGIC ---
             checkAdminAccess: () => app.switchView('admin'),
             login: (e) => {
                 e.preventDefault();
@@ -286,18 +349,85 @@
             },
             logout: () => location.reload(),
 
+            switchAdminMode: (mode) => {
+                state.adminMode = mode;
+                document.getElementById('admin-mode-daily').classList.toggle('hidden', mode !== 'daily');
+                document.getElementById('admin-mode-weekly').classList.toggle('hidden', mode !== 'weekly');
+            },
+
+            // 1. Add Specific Date Dish
             addDish: async (e) => {
                 e.preventDefault();
                 const newDish = {
                     name: document.getElementById('new-name').value,
                     meal: document.getElementById('new-meal').value,
                     price: document.getElementById('new-price').value,
-                    serve_date: document.getElementById('new-date').value, // Capture Date
+                    serve_date: document.getElementById('new-date').value,
+                    is_template: false,
                     votes: 0, score: 0,
                     img_color: ["bg-red-50", "bg-blue-50", "bg-green-50", "bg-orange-50"][Math.floor(Math.random()*4)]
                 };
                 const { error } = await supabaseClient.from('dishes').insert([newDish]);
                 if(!error) { alert('发布成功'); document.getElementById('add-dish-form').reset(); }
+            },
+
+            // 2. Add Template Dish
+            addTemplateDish: async (e) => {
+                e.preventDefault();
+                const newTpl = {
+                    name: document.getElementById('tpl-name').value,
+                    meal: document.getElementById('tpl-meal').value,
+                    price: document.getElementById('tpl-price').value,
+                    week_day: state.currentTemplateDay, // 0-6
+                    is_template: true,
+                    votes: 0, score: 0,
+                    img_color: ["bg-purple-50", "bg-pink-50", "bg-indigo-50"][Math.floor(Math.random()*3)]
+                };
+                const { error } = await supabaseClient.from('dishes').insert([newTpl]);
+                if(!error) { document.getElementById('add-template-form').reset(); }
+            },
+
+            // 3. GENERATE NEXT WEEK
+            generateNextWeek: async () => {
+                if(!confirm(`确定要将当前所有模板应用到下周吗？这会生成实际的菜品数据。`)) return;
+                
+                const nextWeekStart = new Date();
+                // Find next Monday
+                nextWeekStart.setDate(nextWeekStart.getDate() + (1 + 7 - nextWeekStart.getDay()) % 7);
+                
+                const inserts = [];
+                
+                // For each day of next week (0-6 days from next Monday)
+                for (let i = 0; i < 7; i++) {
+                    const targetDate = new Date(nextWeekStart);
+                    targetDate.setDate(nextWeekStart.getDate() + i);
+                    const targetDateStr = targetDate.toISOString().split('T')[0];
+                    const dayOfWeek = targetDate.getDay(); // 0=Sun, 1=Mon
+
+                    // Find templates for this weekday
+                    const daysTemplates = state.templates.filter(t => t.week_day === dayOfWeek);
+                    
+                    daysTemplates.forEach(t => {
+                        inserts.push({
+                            name: t.name,
+                            meal: t.meal,
+                            price: t.price,
+                            serve_date: targetDateStr,
+                            is_template: false,
+                            votes: 0, score: 0,
+                            img_color: t.img_color
+                        });
+                    });
+                }
+
+                if(inserts.length === 0) return alert("没有设置模板，无法生成。");
+
+                const { error } = await supabaseClient.from('dishes').insert(inserts);
+                if(error) alert("生成失败: " + error.message);
+                else {
+                    alert(`成功生成 ${inserts.length} 道菜品到 ${nextWeekStart.toISOString().split('T')[0]} 开始的一周！现在你可以去“每日明细”里微调了。`);
+                    app.switchAdminMode('daily');
+                }
             },
 
             deleteDish: async (id) => {
@@ -308,7 +438,6 @@
             submitVote: async (id, star) => {
                 const d = state.dishes.find(x => x.id === id);
                 await supabaseClient.from('dishes').update({ votes: (d.votes||0)+1, score: (d.score||0)+star }).eq('id', id);
-                // alert('打分成功');
             },
 
             openComment: (id, name) => {
@@ -330,21 +459,40 @@
                 
                 document.getElementById('comment-text').value = '';
                 document.getElementById('comment-modal').classList.add('hidden');
-                alert('评论已发布到趋势看板');
+                alert('评论已发布');
             },
 
-            // --- RENDER ---
+            // --- RENDER HELPERS ---
+            renderWeekdaySelector: () => {
+                const container = document.getElementById('weekday-selector');
+                container.innerHTML = weekdays.map((day, idx) => `
+                    <button onclick="app.setTemplateDay(${idx})" 
+                        class="flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all ${idx === state.currentTemplateDay ? 'active-day-btn shadow-md' : 'inactive-day-btn'}">
+                        ${day}
+                    </button>
+                `).join('');
+                document.getElementById('current-template-day-name').innerText = weekdays[state.currentTemplateDay];
+            },
+
+            setTemplateDay: (idx) => {
+                state.currentTemplateDay = idx;
+                app.renderWeekdaySelector();
+                app.renderTemplateList();
+            },
+
+            // --- RENDER MAIN ---
             renderAll: () => {
                 // 1. Render TODAY
                 const todayDishes = state.dishes.filter(d => d.serve_date === state.todayStr && d.meal === state.currentMeal);
                 app.renderGrid('today-grid', todayDishes, false);
 
-                // 2. Render TOMORROW (Preview)
-                const tmrwStr = getFutureDate(1);
+                // 2. Render TOMORROW
+                const tmrw = new Date(); tmrw.setDate(tmrw.getDate() + 1);
+                const tmrwStr = tmrw.toISOString().split('T')[0];
                 const tmrwDishes = state.dishes.filter(d => d.serve_date === tmrwStr && d.meal === state.currentMeal);
-                app.renderGrid('tmrw-grid', tmrwDishes, true); // true = preview style
+                app.renderGrid('tmrw-grid', tmrwDishes, true);
 
-                // 3. Render Stats (Comments)
+                // 3. Render Comments
                 const commentList = document.getElementById('live-comments-list');
                 commentList.innerHTML = state.comments.map(c => `
                     <div class="bg-gray-50 p-4 rounded-2xl text-sm border border-gray-100">
@@ -356,7 +504,8 @@
                     </div>
                 `).join('');
 
-                // 4. Render Admin List
+                // 4. Render Admin Lists
+                // List A: Daily Real Dishes
                 document.getElementById('admin-list').innerHTML = state.dishes.map(d => `
                     <tr class="hover:bg-gray-50">
                         <td class="px-6 py-3 font-mono text-xs text-gray-500">${d.serve_date}</td>
@@ -365,14 +514,33 @@
                         <td class="px-6 py-3 text-right"><button onclick="app.deleteDish(${d.id})" class="text-red-500 font-bold text-xs">删除</button></td>
                     </tr>
                 `).join('');
+                
+                // List B: Templates
+                app.renderTemplateList();
 
                 if(state.currentView === 'stats') app.updateCharts();
+            },
+
+            renderTemplateList: () => {
+                const list = state.templates.filter(t => t.week_day === state.currentTemplateDay);
+                const container = document.getElementById('template-list');
+                if(list.length === 0) {
+                    container.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-400">该日暂无模板，请添加</td></tr>';
+                    return;
+                }
+                container.innerHTML = list.map(t => `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-3 font-bold text-gray-700">${t.name}</td>
+                        <td class="px-6 py-3 text-xs capitalize text-gray-500">${t.meal}</td>
+                        <td class="px-6 py-3 text-right"><button onclick="app.deleteDish(${t.id})" class="text-red-500 font-bold text-xs">移除模板</button></td>
+                    </tr>
+                `).join('');
             },
 
             renderGrid: (elementId, list, isPreview) => {
                 const el = document.getElementById(elementId);
                 if(list.length === 0) {
-                    el.innerHTML = `<div class="col-span-full py-10 text-center text-gray-400 text-sm">此餐段暂无安排</div>`;
+                    el.innerHTML = `<div class="col-span-full py-10 text-center text-gray-400 text-sm">暂无安排</div>`;
                     return;
                 }
                 el.innerHTML = list.map(d => {
@@ -407,34 +575,18 @@
             updateCharts: () => {
                 const ctx = document.getElementById('rankingChart');
                 if(!ctx) return;
-
                 const sorted = [...state.dishes].sort((a,b) => (b.votes>0?b.score/b.votes:0) - (a.votes>0?a.score/a.votes:0)).slice(0,5);
-                const labels = sorted.map(d => d.name);
-                const data = sorted.map(d => d.votes>0?(d.score/d.votes).toFixed(1):0);
+                
+                if (state.rankingChart) state.rankingChart.destroy();
 
-                if (state.rankingChart) {
-                    state.rankingChart.data.labels = labels;
-                    state.rankingChart.data.datasets[0].data = data;
-                    state.rankingChart.update();
-                } else {
-                    // Safety check if chart instance exists on canvas but not in state
-                    const existingChart = Chart.getChart(ctx);
-                    if (existingChart) existingChart.destroy();
-
-                    state.rankingChart = new Chart(ctx, {
-                        type: 'bar',
-                        data: {
-                            labels: labels,
-                            datasets: [{ label: 'Score', data: data, backgroundColor: '#007AFF', borderRadius: 4 }]
-                        },
-                        options: { 
-                            responsive: true, 
-                            maintainAspectRatio: false, 
-                            plugins: { legend: { display: false } }, 
-                            scales: { y: { beginAtZero: true, max: 5 } } 
-                        }
-                    });
-                }
+                state.rankingChart = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: sorted.map(d => d.name),
+                        datasets: [{ label: 'Score', data: sorted.map(d => d.votes>0?(d.score/d.votes).toFixed(1):0), backgroundColor: '#007AFF', borderRadius: 4 }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: false }, scales: { y: { beginAtZero: true, max: 5 } } }
+                });
             },
 
             // --- VIEW MGMT ---
@@ -445,10 +597,8 @@
                     if(btn) id===v ? btn.classList.add('bg-black', 'text-white') : btn.classList.remove('bg-black', 'text-white');
                 });
                 ['view-home', 'view-stats', 'view-admin'].forEach(el => document.getElementById(el).classList.add('hidden'));
-                
                 if(v === 'admin') document.getElementById('view-admin').classList.remove('hidden');
                 else document.getElementById('view-'+v).classList.remove('hidden');
-
                 if(v === 'stats') { app.renderAll(); setTimeout(app.updateCharts, 100); }
             },
 
@@ -477,6 +627,7 @@
         // Bind Events
         document.getElementById('login-form').addEventListener('submit', app.login);
         document.getElementById('add-dish-form').addEventListener('submit', app.addDish);
+        document.getElementById('add-template-form').addEventListener('submit', app.addTemplateDish);
         document.getElementById('config-form').addEventListener('submit', (e) => {
             e.preventDefault();
             const u = document.getElementById('input-supabase-url').value.trim();
