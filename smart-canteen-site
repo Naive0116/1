@@ -353,8 +353,8 @@
         // ==========================================
 
         // Load config from local storage if available
-        if(localStorage.getItem('sb_url')) supabaseUrl = localStorage.getItem('sb_url');
-        if(localStorage.getItem('sb_key')) supabaseKey = localStorage.getItem('sb_key');
+        if(localStorage.getItem('sb_url')) supabaseUrl = localStorage.getItem('https://pmvsvlekrdluealmgwtg.supabase.co');
+        if(localStorage.getItem('sb_key')) supabaseKey = localStorage.getItem('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtdnN2bGVrcmRsdWVhbG1nd3RnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUyMDA2MjMsImV4cCI6MjA4MDc3NjYyM30.JOotnUvWPLVMPbR_BMR0pkQU-LnM_D3Lo5KpMTcppZs');
 
         let supabaseClient = null;
         
