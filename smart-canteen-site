@@ -348,13 +348,13 @@
         // ==========================================
         // 🔴 配置区域 (请在此填入您的真实 Supabase 信息)
         // ==========================================
-        let supabaseUrl = 'https://YOUR_PROJECT_ID.supabase.co'; 
-        let supabaseKey = 'YOUR_ANON_KEY'; 
+        let supabaseUrl = 'https://pmvsvlekrdluealmgwtg.supabase.co'; 
+        let supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtdnN2bGVrcmRsdWVhbG1nd3RnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUyMDA2MjMsImV4cCI6MjA4MDc3NjYyM30.JOotnUvWPLVMPbR_BMR0pkQU-LnM_D3Lo5KpMTcppZs'; 
         // ==========================================
 
         // Load config from local storage if available
-        if(localStorage.getItem('sb_url')) supabaseUrl = localStorage.getItem('https://pmvsvlekrdluealmgwtg.supabase.co');
-        if(localStorage.getItem('sb_key')) supabaseKey = localStorage.getItem('eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBtdnN2bGVrcmRsdWVhbG1nd3RnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUyMDA2MjMsImV4cCI6MjA4MDc3NjYyM30.JOotnUvWPLVMPbR_BMR0pkQU-LnM_D3Lo5KpMTcppZs');
+        if(localStorage.getItem('sb_url')) supabaseUrl = localStorage.getItem('sb_url');
+        if(localStorage.getItem('sb_key')) supabaseKey = localStorage.getItem('sb_key');
 
         let supabaseClient = null;
         
