@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>智慧食堂 Pro</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['-apple-system', 'BlinkMacSystemFont', '"PingFang SC"', '"Microsoft YaHei"', 'sans-serif'] },
+                    colors: { apple: { bg: '#F5F5F7', card: '#FFFFFF', text: '#1D1D1F', gray: '#86868B', blue: '#0071E3', red: '#FF3B30', green: '#34C759', orange: '#FF9500' } },
+                    borderRadius: { '4xl': '32px' },
+                    boxShadow: { 'soft': '0 4px 24px rgba(0,0,0,0.04)', 'hover': '0 12px 32px rgba(0,0,0,0.08)' }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { background-color: #F5F5F7; color: #1D1D1F; -webkit-font-smoothing: antialiased; }
+        .nav-glass { background: rgba(255,255,255,0.72); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: 1px solid rgba(0,0,0,0.05); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .btn-bounce { transition: transform 0.1s; } .btn-bounce:active { transform: scale(0.96); }
+        .card-hover { transition: all 0.4s; } .card-hover:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,0.08); }
+        .meal-title { font-size: 1.5rem; font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+        .image-fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .rank-badge { font-family: 'DIN Alternate', sans-serif; font-style: italic; }
+
+        /* Star Rating Logic */
+        /* 星级评分容器：使用 row-reverse 以实现 hover 效果向前选中 */
+        .star-group { display: inline-flex; flex-direction: row-reverse; }
+        .star-btn { font-size: 1.1rem; padding: 0 2px; cursor: pointer; transition: transform 0.2s, color 0.2s; color: #E5E5EA; }
+        .star-btn:hover, .star-btn:hover ~ .star-btn { color: #FF9500 !important; transform: scale(1.2); }
+        
+        /* 强力磨砂玻璃效果 */
+        .frosted-blur {
+            filter: blur(12px); /* 12px 的高斯模糊 */
+            opacity: 0.6;
+            transform: scale(1.1); /* 稍微放大一点防止模糊边缘漏出 */
+        }
+        .group:hover .frosted-blur {
+            filter: blur(0px);
+            opacity: 1;
+            transform: scale(1);
+        }
+    </style>
+</head>
+<body class="font-sans selection:bg-apple-blue selection:text-white pb-32">
+
+    <!-- Loading Overlay -->
+    <div id="init-overlay" class="fixed inset-0 bg-[#F5F5F7] z-[100] flex flex-col items-center justify-center transition-opacity duration-700">
+        <div class="w-8 h-8 border-4 border-apple-blue border-t-transparent rounded-full animate-spin mb-4"></div>
+        <p class="text-apple-gray text-sm font-medium">资源同步中...</p>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="nav-glass sticky top-0 z-50 w-full h-[52px]">
+        <div class="max-w-[980px] mx-auto px-4 h-full flex justify-between items-center text-xs">
+            <div class="flex items-center gap-4 cursor-pointer" onclick="app.switchView('home')">
+                <i class="fa-solid fa-utensils text-xl text-apple-orange text-[#FF9500]"></i> 
+                <span class="font-semibold ml-1 text-base tracking-tight text-black">智慧食堂</span>
+            </div>
+            <div class="hidden md:flex space-x-8 items-center text-[#1D1D1F] opacity-80">
+                <button onclick="app.switchView('home')" id="nav-home" class="hover:text-apple-blue transition-all">今日供应</button>
+                <button onclick="app.switchView('stats')" id="nav-stats" class="hover:text-apple-blue transition-all">趋势榜单</button>
+                <button onclick="app.checkAdminAccess()" id="nav-admin" class="hover:text-apple-blue transition-all">管理后台</button>
+            </div>
+            <div class="w-4"></div> 
+        </div>
+    </nav>
+
+    <!-- Mobile Tab Bar -->
+    <div class="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white/90 backdrop-blur-xl border border-white/20 px-1 py-1 rounded-full shadow-lg flex items-center gap-1 scale-100">
+        <button onclick="app.switchView('home')" id="mob-home" class="w-12 h-12 rounded-full flex items-center justify-center text-xl text-black bg-gray-100"><i class="fa-solid fa-utensils"></i></button>
+        <button onclick="app.switchView('stats')" id="mob-stats" class="w-12 h-12 rounded-full flex items-center justify-center text-xl text-gray-400"><i class="fa-solid fa-chart-simple"></i></button>
+        <button onclick="app.checkAdminAccess()" id="mob-admin" class="w-12 h-12 rounded-full flex items-center justify-center text-xl text-gray-400"><i class="fa-solid fa-gear"></i></button>
+    </div>
+
+    <!-- MAIN CONTAINER -->
+    <main class="max-w-[980px] mx-auto px-5 pt-12 animate-fade-in">
+
+        <!-- VIEW 1: HOME (Dashboard) -->
+        <section id="view-home" class="space-y-16">
+            <div class="pb-2 border-b border-[#d2d2d7]/50">
+                <h1 class="text-4xl md:text-5xl font-semibold tracking-tight text-black mb-2">今日菜单</h1>
+                <p class="text-apple-gray text-lg font-medium flex items-center gap-2">
+                    <span id="display-date-today">...</span> 
+                    <span class="w-1 h-1 bg-apple-gray rounded-full"></span>
+                    <span id="display-weekday-today">...</span>
+                </p>
+            </div>
+
+            <!-- Breakfast -->
+            <div>
+                <h2 class="meal-title text-apple-orange"><i class="fa-regular fa-sun"></i> 早餐 Breakfast</h2>
+                <div id="grid-breakfast" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </div>
+            <!-- Lunch -->
+            <div>
+                <!-- 将午餐标题调整为绿色系，图标也采用绿色，使其与早餐、晚餐形成明显区分 -->
+                <h2 class="meal-title text-green-600"><i class="fa-solid fa-bowl-food text-green-600"></i> 午餐 Lunch</h2>
+                <div id="grid-lunch" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </div>
+            <!-- Dinner -->
+            <div>
+                <!-- 将晚餐标题调整为暖红色系，图标也采用红色，使氛围更积极 -->
+                <h2 class="meal-title text-red-600"><i class="fa-solid fa-moon text-red-600"></i> 晚餐 Dinner</h2>
+                <div id="grid-dinner" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </div>
+
+            <div class="pt-8 border-t border-dashed border-gray-200">
+                <div class="flex items-center gap-3 mb-6 opacity-80">
+                    <h2 class="text-2xl font-semibold text-gray-600">明日预告</h2>
+                    <span class="text-sm font-medium text-apple-blue bg-blue-50 px-2 py-1 rounded-md border border-blue-100" id="display-date-tmrw">Preview</span>
+                </div>
+                <div id="tmrw-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 transition-all duration-500"></div>
+            </div>
+        </section>
+
+        <!-- VIEW 2: STATS (Leaderboard) -->
+        <section id="view-stats" class="hidden space-y-10">
+            <div class="text-center mb-8">
+                <h2 class="text-4xl font-semibold tracking-tight mb-2">从夯到拉榜</h2>
+                <p class="text-apple-gray text-lg">趣味美食排名：夯、顶级、人上人、NPC、拉完了</p>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div class="lg:col-span-2 space-y-6"><div id="hot-list" class="space-y-4"></div></div>
+                <div class="bg-white rounded-4xl p-8 shadow-soft border border-white/50 h-fit sticky top-24">
+                    <div class="flex items-center justify-between mb-6">
+                        <h3 class="text-xl font-semibold">最新评价</h3>
+                        <span class="text-xs font-bold text-apple-blue bg-blue-50 px-2 py-1 rounded-md">实时</span>
+                    </div>
+                    <div id="live-comments-list" class="space-y-6 max-h-[600px] overflow-y-auto pr-2 no-scrollbar"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 3: ADMIN (Management) -->
+        <section id="view-admin" class="hidden">
+            <!-- Login Panel -->
+            <div id="admin-login-panel" class="max-w-[360px] mx-auto mt-24 text-center">
+                <div class="w-20 h-20 bg-[#E8E8ED] rounded-full mx-auto mb-6 flex items-center justify-center text-3xl text-gray-400"><i class="fa-solid fa-lock"></i></div>
+                <h2 class="text-2xl font-semibold mb-2">管理员登录</h2>
+                <p class="text-apple-gray text-sm mb-6">请输入凭证进入后台</p>
+                
+                <form id="login-form" class="space-y-4">
+                    <input type="text" id="admin-user" class="w-full bg-white border border-[#D2D2D7] rounded-xl px-4 py-3 text-[15px] focus:outline-none focus:ring-1 focus:ring-apple-blue" placeholder="账号">
+                    <input type="password" id="admin-pass" class="w-full bg-white border border-[#D2D2D7] rounded-xl px-4 py-3 text-[15px] focus:outline-none focus:ring-1 focus:ring-apple-blue" placeholder="密码">
+                    
+                    <div class="flex items-center justify-start ml-1">
+                        <label class="flex items-center gap-2 cursor-pointer group">
+                            <input type="checkbox" id="remember-me" class="w-4 h-4 rounded border-gray-300 text-apple-blue focus:ring-apple-blue cursor-pointer">
+                            <span class="text-xs text-gray-500 group-hover:text-black transition-colors">记住密码</span>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="w-full bg-apple-blue text-white font-medium rounded-xl py-3 mt-2 hover:bg-[#0077ED] btn-bounce shadow-md">登 录</button>
+                </form>
+            </div>
+
+            <!-- Dashboard -->
+            <div id="admin-dashboard" class="hidden space-y-8">
+                <!-- Admin Header -->
+                <div class="bg-white rounded-4xl p-8 shadow-soft flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div>
+                        <h2 class="text-3xl font-semibold text-black">管理后台</h2>
+                        <p class="text-apple-gray mt-1 text-sm">排期与菜品维护</p>
+                    </div>
+                    <div class="bg-[#F5F5F7] p-1 rounded-full flex">
+                        <button onclick="app.switchAdminMode('library')" id="adm-library-btn" class="px-5 py-2 bg-white rounded-full shadow-sm text-xs font-semibold text-black">菜品库</button>
+                        <button onclick="app.switchAdminMode('schedule')" id="adm-schedule-btn" class="px-5 py-2 text-apple-gray rounded-full text-xs font-semibold hover:text-black">排期管理</button>
+                        <button onclick="app.switchAdminMode('feedback')" id="adm-feedback-btn" class="px-5 py-2 text-apple-gray rounded-full text-xs font-semibold hover:text-black">评价管理</button>
+                    </div>
+                    <button onclick="app.logout()" class="text-apple-red text-sm font-medium hover:underline">退出登录</button>
+                </div>
+
+                <!-- MODE A: DISH LIBRARY (Upload & Manage) -->
+                <div id="admin-mode-library" class="hidden space-y-6 animate-fade-in">
+                    <div class="bg-white p-8 rounded-4xl shadow-soft">
+                        <h3 class="text-xl font-semibold mb-6 flex items-center gap-2">
+                            <i class="fa-solid fa-book-open text-apple-blue"></i> 录入新菜品到库
+                        </h3>
+                        <form id="add-library-form" class="space-y-6">
+                            <div class="flex flex-col md:flex-row gap-6 items-start">
+                                <!-- Image Upload Box -->
+                                <div class="w-full md:w-48 h-48 bg-gray-100 rounded-2xl flex-shrink-0 relative overflow-hidden border border-dashed border-gray-300 hover:border-apple-blue transition-colors group cursor-pointer">
+                                    <input type="file" id="lib-image-upload" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer z-10" onchange="app.handleImagePreview(this)">
+                                    <img id="lib-image-preview" class="w-full h-full object-cover hidden">
+                                    <div id="lib-upload-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-gray-400 group-hover:text-apple-blue">
+                                        <i class="fa-solid fa-camera text-3xl mb-2"></i>
+                                        <span class="text-xs font-medium">点击上传实拍图</span>
+                                    </div>
+                                </div>
+                                <div class="flex-grow space-y-4 w-full">
+                                    <input type="text" id="lib-name" class="w-full bg-[#F5F5F7] border-0 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-apple-blue/20" placeholder="菜品名称 (如: 红烧肉)" required>
+                                    <button type="submit" class="w-full bg-black text-white font-medium rounded-xl py-3 btn-bounce shadow-md">保存到菜品库</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Library List -->
+                    <div class="bg-white rounded-4xl shadow-soft overflow-hidden">
+                        <div class="p-6 border-b border-gray-100 bg-gray-50/50"><h3 class="font-semibold text-sm text-gray-500">现有菜品库</h3></div>
+                        <div class="overflow-x-auto max-h-[400px]">
+                            <table class="w-full text-sm text-left">
+                                <thead class="bg-white text-gray-400 sticky top-0"><tr><th class="px-6 py-3">图片</th><th class="px-6 py-3">菜名</th><th class="px-6 py-3 text-right">操作</th></tr></thead>
+                                <tbody id="library-list" class="divide-y divide-gray-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                <!-- end of admin-mode-library -->
+                </div>
+
+                <!-- MODE C: FEEDBACK -->
+                <!-- 用户评价与反馈管理面板 -->
+                <div id="admin-mode-feedback" class="hidden space-y-8 animate-fade-in">
+                    <div class="bg-white rounded-4xl shadow-soft overflow-hidden">
+                        <div class="p-6 border-b border-gray-100 bg-gray-50/50">
+                            <h3 class="font-semibold text-sm text-gray-500">用户评价列表</h3>
+                        </div>
+                        <div class="overflow-x-auto max-h-[500px]">
+                            <table class="w-full text-sm text-left">
+                                <thead class="bg-white text-gray-400 sticky top-0">
+                                    <tr>
+                                        <th class="px-6 py-3">菜名</th>
+                                        <th class="px-6 py-3">评分</th>
+                                        <th class="px-6 py-3">留言</th>
+                                        <th class="px-6 py-3">评价时间</th>
+                                        <th class="px-6 py-3">用户 ID</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="feedback-list" class="divide-y divide-gray-100"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MODE B: SCHEDULE -->
+                <div id="admin-mode-schedule" class="hidden space-y-8 animate-fade-in">
+                    <div class="flex gap-4 border-b border-gray-200 pb-2">
+                        <button onclick="app.switchScheduleTab('daily')" id="sch-tab-daily" class="text-black font-bold border-b-2 border-black pb-2 px-2">每日明细</button>
+                        <button onclick="app.switchScheduleTab('weekly')" id="sch-tab-weekly" class="text-gray-400 hover:text-black transition-colors pb-2 px-2">周常模板</button>
+                    </div>
+
+                    <!-- 1. Daily Schedule -->
+                    <div id="schedule-view-daily" class="space-y-6">
+                        <div class="bg-white p-6 rounded-3xl shadow-apple">
+                            <h3 class="font-bold mb-4">排期：添加单日菜品</h3>
+                            <form id="add-daily-form" class="space-y-4">
+                                <label class="block text-xs font-bold text-gray-400 uppercase ml-1">第一步：选择菜品</label>
+                                <select id="daily-select-dish" class="w-full bg-[#F5F5F7] border-0 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-apple-blue/20">
+                                    <option value="">-- 从菜品库选择 --</option>
+                                    <!-- Populated by JS -->
+                                </select>
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div><label class="text-xs font-bold text-gray-400 uppercase ml-1">日期</label><input type="date" id="daily-date" class="w-full bg-[#F5F5F7] border-0 rounded-xl px-4 py-3 text-sm" required onchange="app.renderAll()"></div>
+                                    <div><label class="text-xs font-bold text-gray-400 uppercase ml-1">时段</label><select id="daily-meal" class="w-full bg-[#F5F5F7] border-0 rounded-xl px-4 py-3 text-sm col-span-1"><option value="breakfast">早餐</option><option value="lunch">午餐</option><option value="dinner">晚餐</option></select></div>
+                                    <div><label class="text-xs font-bold text-gray-400 uppercase ml-1">价格</label><input type="number" id="daily-price" class="w-full bg-[#F5F5F7] border-0 rounded-xl px-4 py-3 text-sm col-span-1" placeholder="¥"></div>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button type="submit" class="flex-grow bg-apple-green text-white font-medium rounded-xl py-3 btn-bounce shadow-md">发布到该日</button>
+                                    <button type="button" onclick="app.importTemplateForDate()" class="px-6 bg-black text-white font-medium rounded-xl py-3 btn-bounce shadow-md flex items-center justify-center gap-1" title="从对应周常模板导入"><i class="fa-solid fa-cloud-arrow-down"></i> 导入模板</button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- List with Filter -->
+                        <div class="bg-white rounded-4xl shadow-soft overflow-hidden">
+                            <div class="px-6 pt-6 flex gap-2 overflow-x-auto no-scrollbar">
+                                <button onclick="app.setAdminFilter('all')" class="admin-filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-black text-white transition-all" data-filter="all">全部</button>
+                                <button onclick="app.setAdminFilter('breakfast')" class="admin-filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-500 hover:bg-gray-200 transition-all" data-filter="breakfast">早餐</button>
+                                <button onclick="app.setAdminFilter('lunch')" class="admin-filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-500 hover:bg-gray-200 transition-all" data-filter="lunch">午餐</button>
+                                <button onclick="app.setAdminFilter('dinner')" class="admin-filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-500 hover:bg-gray-200 transition-all" data-filter="dinner">晚餐</button>
+                            </div>
+                            <div class="px-6 pt-2 text-xs text-apple-gray font-medium flex items-center gap-2">
+                                <i class="fa-solid fa-filter"></i> 当前显示：<span id="admin-list-date-label">今天</span> 的菜单
+                            </div>
+                            <div class="overflow-x-auto max-h-[600px] mt-2">
+                                <table class="w-full text-sm text-left">
+                                    <thead class="bg-gray-50/50 text-apple-gray font-medium">
+                                        <tr>
+                                            <th class="px-6 py-4">日期</th>
+                                            <th class="px-6 py-4">图片</th>
+                                            <th class="px-6 py-4">菜名</th>
+                                            <th class="px-6 py-4">评分</th>
+                                            <th class="px-6 py-4">时段</th>
+                                            <th class="px-6 py-4 text-right">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="admin-list" class="divide-y divide-gray-100"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 2. Weekly Template -->
+                    <div id="schedule-view-weekly" class="hidden space-y-6">
+                        <div class="flex overflow-x-auto gap-3 pb-2 no-scrollbar" id="weekday-selector"></div>
+                        <div class="bg-white p-6 rounded-3xl shadow-apple">
+                            <h3 class="font-bold mb-4 flex items-center gap-2"><span class="w-1.5 h-6 bg-apple-blue rounded-full"></span> 设置 <span id="current-template-day-name" class="text-apple-blue">周一</span> 模板</h3>
+                            <form id="add-template-form" class="space-y-4">
+                                <select id="tpl-select-dish" class="w-full bg-[#F5F5F7] border-0 rounded-xl px-4 py-3 text-sm" onchange="app.fillPriceFromLib(this, 'tpl-price')"><option value="">-- 从菜品库选择 --</option></select>
+                                <div class="grid grid-cols-2 gap-4">
+                                    <select id="tpl-meal" class="w-full bg-[#F5F5F7] border-0 rounded-xl px-4 py-3 text-sm"><option value="breakfast">早餐</option><option value="lunch">午餐</option><option value="dinner">晚餐</option></select>
+                                    <input type="number" id="tpl-price" class="w-full bg-[#F5F5F7] border-0 rounded-xl px-4 py-3 text-sm" placeholder="价格 (¥)">
+                                </div>
+                                <button type="submit" class="w-full bg-black text-white font-medium rounded-xl py-3 btn-bounce">保存模板</button>
+                            </form>
+                        </div>
+                        <div class="bg-white rounded-4xl shadow-soft overflow-hidden">
+                            <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50"><h3 class="font-semibold text-sm">模板列表</h3><button onclick="app.generateNextWeek()" class="text-apple-blue text-xs font-bold hover:underline">一键生成下周排期</button></div>
+                            <div class="overflow-x-auto"><table class="w-full text-sm text-left"><tbody id="template-list" class="divide-y divide-gray-100"></tbody></table></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Confirm Modal -->
+    <div id="confirm-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[300] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl shadow-2xl max-w-sm w-full p-8 animate-fade-in text-center transform scale-100 transition-all">
+            <div class="w-16 h-16 bg-red-50 rounded-full mx-auto mb-4 flex items-center justify-center text-apple-red text-2xl"><i class="fa-solid fa-trash-can"></i></div>
+            <h3 class="font-bold text-xl mb-2 text-[#1D1D1F]">确认删除?</h3>
+            <p class="text-apple-gray text-sm mb-6 leading-relaxed">此操作将永久删除该条目，无法恢复。</p>
+            <div class="flex gap-3">
+                <button onclick="app.closeConfirmModal()" class="flex-1 py-3 text-sm bg-gray-100 rounded-xl font-bold text-gray-600 hover:bg-gray-200 transition-colors">取消</button>
+                <button id="confirm-btn-yes" class="flex-1 py-3 text-sm bg-apple-red text-white rounded-xl font-bold hover:bg-red-600 shadow-lg transition-colors">确认删除</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Comment Modal -->
+    <div id="comment-modal" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[200] hidden flex items-center justify-center p-4 transition-all duration-300">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-[360px] p-8 transform scale-100 animate-fade-in-up">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-gray-50 rounded-full mx-auto mb-4 flex items-center justify-center text-2xl shadow-inner">✍️</div>
+                <h3 class="text-xl font-semibold mb-1">撰写评价</h3>
+                <p class="text-apple-gray text-sm font-medium" id="modal-dish-name">菜品名称</p>
+                <input type="hidden" id="modal-dish-id-hidden">
+            </div>
+            <textarea id="comment-text" class="w-full bg-[#F5F5F7] rounded-2xl p-4 text-sm h-32 focus:outline-none focus:ring-2 focus:ring-apple-blue/20 resize-none" placeholder="味道怎么样？"></textarea>
+            <div class="flex gap-3 mt-6">
+                <button onclick="app.closeCommentModal()" class="flex-1 py-3 text-sm bg-[#F5F5F7] rounded-xl font-semibold text-gray-500 hover:bg-gray-200 btn-bounce">取消</button>
+                <button onclick="app.submitCommentAction()" class="flex-1 py-3 text-sm bg-black text-white rounded-xl font-semibold hover:opacity-90 btn-bounce">提交</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed top-6 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-xl border border-gray-200 shadow-hover px-6 py-3 rounded-full flex items-center gap-3 z-[300] transform -translate-y-32 transition-all duration-500">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-apple-green text-xl"></i>
+        <span class="text-sm font-semibold" id="toast-msg">操作成功</span>
+    </div>
+
+    <script>
+        // ==========================================
+        // 🔴 配置区域
+        // ==========================================
+        const supabaseUrl = 'https://zjwqbyijjxoalzchtjrz.supabase.co'; 
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inpqd3FieWlqanhvYWx6Y2h0anJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUyNDM0MTksImV4cCI6MjA4MDgxOTQxOX0.FbPI3J9a8AsdvtpiNIeZ0Ia8dMXutFbuTc_T0ymnFhw'; 
+        // ==========================================
+
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+        const state = { 
+            currentView: 'home', isAdmin: false, 
+            dishes: [], templates: [], comments: [], dishLibrary: [], reviews: [], userRatings: {},
+            todayStr: new Date().toISOString().split('T')[0],
+            adminMode: 'library', scheduleTab: 'daily', currentTemplateDay: 1, adminFilter: 'all',
+            pendingDeleteId: null, pendingDeleteType: null,
+            userId: 'user_' + Math.floor(Math.random() * 100000)
+        };
+
+        const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+        const mealMap = { 'breakfast': '早餐', 'lunch': '午餐', 'dinner': '晚餐' };
+        // 调整各餐时段的配色，使三餐颜色清晰区分：
+        // 早餐：橙色；午餐：绿色；晚餐：红色。这样在后台管理界面中，每个时段的标签颜色一目了然。
+        // 如果需要调整色调，请参考 Tailwind 颜色方案替换相应的色阶。
+        const mealColor = {
+            breakfast: 'bg-orange-100 text-orange-600', // 橙色，早晨活力
+            lunch:     'bg-green-100 text-green-600',   // 绿色，午间清新
+            dinner:    'bg-red-100 text-red-600'       // 红色，晚餐温暖
+        };
+        const mealOrder = { 'breakfast': 1, 'lunch': 2, 'dinner': 3 };
+
+        const app = {
+            init: async () => {
+                // Restore login
+                const savedUser = localStorage.getItem('saved_user');
+                const savedPass = localStorage.getItem('saved_pass');
+                if (savedUser && savedPass) {
+                    document.getElementById('admin-user').value = savedUser;
+                    document.getElementById('admin-pass').value = savedPass;
+                    document.getElementById('remember-me').checked = true;
+                }
+
+                const today = new Date();
+                document.getElementById('display-date-today').innerText = today.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric' });
+                document.getElementById('display-weekday-today').innerText = weekdays[today.getDay()];
+                document.getElementById('daily-date').value = state.todayStr;
+
+                app.renderWeekdaySelector();
+                await app.fetchData();
+                app.setupRealtime();
+                document.getElementById('init-overlay').classList.add('opacity-0', 'pointer-events-none');
+            },
+
+            fetchData: async () => {
+                const { data: d } = await supabaseClient.from('dishes').select('*').eq('is_template', false);
+                const { data: t } = await supabaseClient.from('dishes').select('*').eq('is_template', true);
+                const { data: c } = await supabaseClient.from('comments').select('*').order('created_at', {ascending: false}).limit(30);
+                const { data: l } = await supabaseClient.from('dish_images').select('*').order('created_at', {ascending: false}); // Library
+                const { data: r } = await supabaseClient.from('reviews').select('*').order('created_at', {ascending: false}); // Reviews
+
+                // Reset and rebuild user-specific rating map
+                state.userRatings = {};
+                if (r && r.length > 0) {
+                    r.forEach(rv => {
+                        if (rv.user_id === state.userId) {
+                            // Keep the latest rating per dish
+                            state.userRatings[rv.dish_id] = rv.rating;
+                        }
+                    });
+                }
+
+                state.dishes = (d || []).sort((a,b) => {
+                    if (a.serve_date !== b.serve_date) return a.serve_date < b.serve_date ? 1 : -1; 
+                    return mealOrder[a.meal] - mealOrder[b.meal];
+                });
+                state.templates = (t || []).sort((a,b) => mealOrder[a.meal] - mealOrder[b.meal]);
+                state.comments = c || [];
+                state.dishLibrary = l || [];
+                state.reviews = r || [];
+
+                app.renderAll();
+            },
+
+            // --- CONFIRM MODAL (Fixed Logic) ---
+            openConfirmModal: (id, type) => {
+                state.pendingDeleteId = id;
+                state.pendingDeleteType = type;
+                document.getElementById('confirm-modal').classList.remove('hidden');
+            },
+            closeConfirmModal: () => {
+                document.getElementById('confirm-modal').classList.add('hidden');
+                state.pendingDeleteId = null;
+            },
+            executeDelete: async () => {
+                const id = state.pendingDeleteId;
+                const type = state.pendingDeleteType;
+                app.closeConfirmModal(); // Close first
+
+                if (!id) return;
+                
+                let table = type === 'library' ? 'dish_images' : 'dishes';
+                
+                const { error } = await supabaseClient.from(table).delete().eq('id', id);
+                if (!error) {
+                    app.showToast("删除成功");
+                    // Optimistic update
+                    if (type === 'library') state.dishLibrary = state.dishLibrary.filter(x => x.id !== id);
+                    else if (type === 'dish') state.dishes = state.dishes.filter(x => x.id !== id);
+                    else if (type === 'template') state.templates = state.templates.filter(x => x.id !== id);
+                    app.renderAll(); 
+                    app.fetchData(); // Sync
+                } else {
+                    app.showToast("删除失败: " + error.message, false);
+                }
+            },
+
+            // --- SYNC FEATURES ---
+            importTemplateForDate: async () => {
+                const dateStr = document.getElementById('daily-date').value;
+                if(!dateStr) return app.showToast("请选择日期", false);
+                
+                const dayOfWeek = new Date(dateStr).getDay();
+                const templates = state.templates.filter(t => t.week_day === dayOfWeek);
+                
+                if (templates.length === 0) return app.showToast("该星期几暂无模板", false);
+                
+                // Get existing dishes for this day to avoid duplicates (by name)
+                const existingNames = new Set(state.dishes.filter(d => d.serve_date === dateStr).map(d => d.name));
+                const toInsert = templates.filter(t => !existingNames.has(t.name)).map(t => ({
+                    name: t.name, meal: t.meal, price: t.price, image_url: t.image_url,
+                    serve_date: dateStr, is_template: false, votes: 0, score: 0
+                }));
+                
+                if (toInsert.length === 0) return app.showToast("所有模板菜品已存在", false);
+                
+                const { error } = await supabaseClient.from('dishes').insert(toInsert);
+                if (!error) {
+                    app.showToast(`成功导入 ${toInsert.length} 道菜品`);
+                    app.fetchData();
+                } else {
+                    app.showToast("导入失败", false);
+                }
+            },
+            
+            promoteToTemplate: async (dishId) => {
+                const dish = state.dishes.find(d => d.id === dishId);
+                if(!dish) return;
+                
+                const dayOfWeek = new Date(dish.serve_date).getDay();
+                
+                // Check dup
+                if (state.templates.some(t => t.week_day === dayOfWeek && t.name === dish.name)) {
+                    return app.showToast("该菜品已在对应周常模板中", false);
+                }
+                
+                const newTpl = {
+                    name: dish.name, meal: dish.meal, price: dish.price, image_url: dish.image_url,
+                    week_day: dayOfWeek, is_template: true, votes: 0, score: 0
+                };
+                
+                const { error } = await supabaseClient.from('dishes').insert([newTpl]);
+                if (!error) { app.showToast("已设为周常模板"); app.fetchData(); }
+                else app.showToast("操作失败", false);
+            },
+
+            // --- LIBRARY LOGIC ---
+            handleImagePreview: (input) => {
+                if (input.files && input.files[0]) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = document.getElementById('lib-image-preview');
+                        img.src = e.target.result;
+                        img.classList.remove('hidden');
+                        document.getElementById('lib-upload-placeholder').classList.add('hidden');
+                    };
+                    reader.readAsDataURL(input.files[0]);
+                }
+            },
+
+            addDishToLibrary: async (e) => {
+                e.preventDefault();
+                const name = document.getElementById('lib-name').value.trim();
+                const fileInput = document.getElementById('lib-image-upload');
+                
+                if(!name) return app.showToast("请输入菜名", false);
+                if(!fileInput.files[0]) return app.showToast("请上传图片", false);
+
+                if (state.dishLibrary.some(d => d.dish_name === name)) return app.showToast("该菜品已存在库中", false);
+
+                try {
+                    const file = fileInput.files[0];
+                    const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`;
+                    const { error: uploadError } = await supabaseClient.storage.from('dish-images').upload(fileName, file);
+                    if(uploadError) throw uploadError;
+
+                    const { data: { publicUrl } } = supabaseClient.storage.from('dish-images').getPublicUrl(fileName);
+
+                    const { error: dbError } = await supabaseClient.from('dish_images').insert([{ dish_name: name, image_url: publicUrl }]);
+                    if(dbError) throw dbError;
+
+                    app.showToast("菜品录入成功");
+                    document.getElementById('add-library-form').reset();
+                    document.getElementById('lib-image-preview').classList.add('hidden');
+                    document.getElementById('lib-upload-placeholder').classList.remove('hidden');
+                    
+                    await app.fetchData();
+
+                } catch (error) {
+                    console.error(error);
+                    app.showToast("录入失败: 请检查 Storage 权限", false);
+                }
+            },
+
+            // --- SCHEDULING LOGIC ---
+            fillPriceFromLib: (select, priceInputId) => {
+                // Not strictly needed since price is per instance, but good UX if we stored default price
+            },
+
+            addDishToSchedule: async (e, isTemplate) => {
+                e.preventDefault();
+                const prefix = isTemplate ? 'tpl' : 'daily';
+                const dishId = document.getElementById(`${prefix}-select-dish`).value; // Using dish_images ID as reference
+                const selectedLibItem = state.dishLibrary.find(item => item.id == dishId);
+
+                if(!selectedLibItem) return app.showToast("请先选择菜品", false);
+                
+                const meal = document.getElementById(`${prefix}-meal`).value;
+                const price = document.getElementById(`${prefix}-price`).value || 0;
+                
+                const newDish = {
+                    name: selectedLibItem.dish_name,
+                    meal: meal,
+                    price: price,
+                    image_url: selectedLibItem.image_url,
+                    is_template: isTemplate,
+                    votes: 0, score: 0
+                };
+
+                if (isTemplate) {
+                    newDish.week_day = state.currentTemplateDay;
+                } else {
+                    newDish.serve_date = document.getElementById('daily-date').value;
+                }
+
+                const { error } = await supabaseClient.from('dishes').insert([newDish]);
+                if(!error) { app.showToast("排期添加成功"); if(isTemplate) app.fetchData(); else app.fetchData(); } // Simplify refresh
+                else app.showToast("添加失败", false);
+            },
+
+            // --- HELPERS ---
+            setAdminFilter: (filter) => {
+                state.adminFilter = filter;
+                document.querySelectorAll('.admin-filter-btn').forEach(btn => {
+                    btn.className = btn.dataset.filter === filter ? 
+                        "admin-filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-black text-white transition-all" : 
+                        "admin-filter-btn px-4 py-1.5 rounded-full text-xs font-bold bg-gray-100 text-gray-500 hover:bg-gray-200 transition-all";
+                });
+                app.renderAll();
+            },
+
+            generateNextWeek: async () => {
+                if(!confirm(`确定要将所有模板应用到下周吗？`)) return;
+                const nextWeekStart = new Date();
+                nextWeekStart.setDate(nextWeekStart.getDate() + (1 + 7 - nextWeekStart.getDay()) % 7);
+                const inserts = [];
+                for (let i = 0; i < 7; i++) {
+                    const targetDate = new Date(nextWeekStart); targetDate.setDate(nextWeekStart.getDate() + i);
+                    const dayOfWeek = targetDate.getDay();
+                    state.templates.filter(t => t.week_day === dayOfWeek).forEach(t => {
+                        inserts.push({
+                            name: t.name, meal: t.meal, price: t.price,
+                            serve_date: targetDate.toISOString().split('T')[0], is_template: false,
+                            votes: 0, score: 0, image_url: t.image_url 
+                        });
+                    });
+                }
+                if(inserts.length === 0) return app.showToast("没有模板数据", false);
+                const { error } = await supabaseClient.from('dishes').insert(inserts);
+                if(!error) { app.showToast(`已生成 ${inserts.length} 道菜品`); }
+            },
+
+            submitVote: async (id, star) => {
+                const d = state.dishes.find(x => x.id === id);
+                if(!d) return;
+                const ratingVal = parseFloat(star);
+
+                // 检查当日是否已经评价过该菜品（前端限流防刷票）
+                const todayStr = new Date().toISOString().split('T')[0];
+                const already = state.reviews.some(r => r.dish_id == id && r.user_id == state.userId && r.created_at && r.created_at.startsWith(todayStr));
+                if(already) {
+                    return app.showToast('您今天已评价过该菜品', false);
+                }
+
+                // 实时提示用户已提交评分
+                app.showToast(`已提交 ${ratingVal} 星评价，我们会尽快同步~`);
+
+                // 乐观更新前端数据
+                d.votes = (d.votes || 0) + 1;
+                d.score = (d.score || 0) + ratingVal;
+                // 更新用户评分缓存，使星星保持颜色
+                state.userRatings[id] = ratingVal;
+                app.renderAll(); // 即时刷新平均分
+
+                // 异步写入评分记录到 reviews 表
+                const insertRes = await supabaseClient.from('reviews').insert([{ 
+                    dish_id: id,
+                    rating: ratingVal,
+                    comment: '',
+                    user_id: state.userId,
+                    created_at: new Date().toISOString()
+                }]);
+
+                // 更新 dishes 表中的累积分数和投票数
+                const updateRes = await supabaseClient.from('dishes').update({ votes: d.votes, score: d.score }).eq('id', id);
+                if (insertRes.error || updateRes.error) {
+                    app.showToast('评分同步失败，请稍后重试', false);
+                } else {
+                    // 提示评分成功
+                    app.showToast('感谢您的评分！');
+                }
+                // 刷新数据以同步 reviews 列表
+                app.fetchData();
+            },
+            // --- EDITING LOGIC ---
+            // Allow admin to edit scheduled dishes or templates directly from the admin table.
+            // Users can modify the dish name and price; the changes are persisted via Supabase and the UI refreshed.
+            editDishItem: async (id, type) => {
+                const list = type === 'dish' ? state.dishes : state.templates;
+                const item = list.find(d => d.id === id);
+                if(!item) return;
+                const newName = prompt("修改菜名：", item.name);
+                if (!newName || newName.trim() === '') return;
+                const priceInput = prompt("修改价格：", item.price);
+                let newPrice = item.price;
+                if(priceInput !== null && priceInput !== '') {
+                    const parsed = parseFloat(priceInput);
+                    if(!isNaN(parsed)) newPrice = parsed;
+                }
+                const { error } = await supabaseClient.from('dishes').update({ name: newName.trim(), price: newPrice }).eq('id', id);
+                if(!error) {
+                    app.showToast("更新成功");
+                    await app.fetchData();
+                } else {
+                    app.showToast("更新失败: " + error.message, false);
+                }
+            },
+            // Allow admin to edit entries in the dish library. Only dish_name can be edited here.
+            editLibraryItem: async (id) => {
+                const item = state.dishLibrary.find(x => x.id === id);
+                if(!item) return;
+                const newName = prompt("修改菜品名称：", item.dish_name);
+                if (!newName || newName.trim() === '') return;
+                const { error } = await supabaseClient.from('dish_images').update({ dish_name: newName.trim() }).eq('id', id);
+                if(!error) {
+                    app.showToast("更新成功");
+                    await app.fetchData();
+                } else {
+                    app.showToast("更新失败: " + error.message, false);
+                }
+            },
+            openCommentModal: (id, name) => {
+                document.getElementById('modal-dish-id-hidden').value = id;
+                document.getElementById('modal-dish-name').innerText = name;
+                document.getElementById('comment-modal').classList.remove('hidden');
+            },
+            closeCommentModal: () => document.getElementById('comment-modal').classList.add('hidden'),
+            submitCommentAction: async () => {
+                const text = document.getElementById('comment-text').value.trim();
+                const dishId = document.getElementById('modal-dish-id-hidden').value;
+                const dish = state.dishes.find(d => d.id == dishId); 
+                if(!text || !dishId || !dish) return;
+                
+                const { error } = await supabaseClient.from('comments').insert([{ 
+                    dish_id: dishId, 
+                    dish_name: dish.name, 
+                    text: text, 
+                    created_at: new Date().toISOString(),
+                    user_id: state.userId // ADDED USER_ID
+                }]);
+                if(!error) { app.showToast('评论已提交'); app.closeCommentModal(); document.getElementById('comment-text').value = ''; app.fetchData(); }
+            },
+
+            showToast: (msg, success=true) => {
+                const toast = document.getElementById('toast');
+                const msgEl = document.getElementById('toast-msg');
+                const iconEl = document.getElementById('toast-icon');
+                msgEl.innerText = msg;
+                iconEl.className = success ? "fa-solid fa-circle-check text-apple-green text-xl" : "fa-solid fa-circle-exclamation text-apple-red text-xl";
+                toast.classList.remove('-translate-y-32');
+                setTimeout(() => toast.classList.add('-translate-y-32'), 3000);
+            },
+
+            checkAdminAccess: () => app.switchView('admin'),
+            login: (e) => { 
+                e.preventDefault(); 
+                const u = document.getElementById('admin-user').value;
+                const p = document.getElementById('admin-pass').value;
+                const remember = document.getElementById('remember-me').checked;
+
+                if(u==='gly123' && p==='123456'){
+                    state.isAdmin=true;
+                    document.getElementById('admin-login-panel').classList.add('hidden'); 
+                    document.getElementById('admin-dashboard').classList.remove('hidden');
+                    app.switchAdminMode('library'); 
+                    
+                    if (remember) {
+                        localStorage.setItem('saved_user', u);
+                        localStorage.setItem('saved_pass', p);
+                    } else {
+                        localStorage.removeItem('saved_user');
+                        localStorage.removeItem('saved_pass');
+                    }
+                } else app.showToast("账号或密码错误", false);
+            },
+            logout: () => location.reload(),
+            
+            switchAdminMode: (mode) => {
+                state.adminMode = mode;
+                const libPanel = document.getElementById('admin-mode-library');
+                const schPanel = document.getElementById('admin-mode-schedule');
+                const feedbackPanel = document.getElementById('admin-mode-feedback');
+                // Toggle visibility: show selected panel, hide others
+                libPanel.classList.toggle('hidden', mode !== 'library');
+                schPanel.classList.toggle('hidden', mode !== 'schedule');
+                feedbackPanel.classList.toggle('hidden', mode !== 'feedback');
+                // Update active states on navigation buttons
+                const btnLib = document.getElementById('adm-library-btn');
+                const btnSch = document.getElementById('adm-schedule-btn');
+                const btnFb = document.getElementById('adm-feedback-btn');
+                const setActive = (el, active) => {
+                    el.className = active ?
+                        "px-5 py-2 bg-white rounded-full shadow-sm text-xs font-semibold text-black transition-all" :
+                        "px-5 py-2 text-apple-gray rounded-full text-xs font-semibold hover:text-black transition-all";
+                };
+                setActive(btnLib, mode === 'library');
+                setActive(btnSch, mode === 'schedule');
+                setActive(btnFb, mode === 'feedback');
+            },
+
+            switchScheduleTab: (tab) => {
+                state.scheduleTab = tab;
+                document.getElementById('schedule-view-daily').classList.toggle('hidden', tab !== 'daily');
+                document.getElementById('schedule-view-weekly').classList.toggle('hidden', tab !== 'weekly');
+                
+                const btnD = document.getElementById('sch-tab-daily');
+                const btnW = document.getElementById('sch-tab-weekly');
+                const activeCls = "text-black font-bold border-b-2 border-black pb-2 px-2";
+                const inactiveCls = "text-gray-400 hover:text-black transition-colors pb-2 px-2";
+                
+                btnD.className = tab === 'daily' ? activeCls : inactiveCls;
+                btnW.className = tab === 'weekly' ? activeCls : inactiveCls;
+            },
+
+            switchView: (v) => { 
+                state.currentView=v; 
+                ['home','stats','admin'].forEach(id=>{
+                    const btn = document.getElementById('nav-'+id);
+                    const mobBtn = document.getElementById('mob-'+id);
+                    if(id===v) {
+                        btn.className = "hover:text-apple-blue opacity-100 font-semibold transition-all text-apple-blue";
+                        mobBtn.className = "w-12 h-12 rounded-full flex items-center justify-center text-xl bg-black text-white transition-all";
+                    } else {
+                        btn.className = "hover:text-apple-blue opacity-80 transition-all";
+                        mobBtn.className = "w-12 h-12 rounded-full flex items-center justify-center text-xl text-gray-400 hover:text-black transition-all";
+                    }
+                });
+                ['view-home','view-stats','view-admin'].forEach(el=>document.getElementById(el).classList.add('hidden')); 
+                document.getElementById('view-'+v).classList.remove('hidden'); 
+                if(v==='stats') app.renderAll(); 
+            },
+
+            setTemplateDay: (idx) => { state.currentTemplateDay=idx; app.renderWeekdaySelector(); app.renderAll(); },
+            renderWeekdaySelector: () => { 
+                document.getElementById('weekday-selector').innerHTML=weekdays.map((day,idx)=>`
+                    <button onclick="app.setTemplateDay(${idx})" class="flex-shrink-0 px-4 py-2 rounded-full text-xs font-semibold transition-all ${idx===state.currentTemplateDay?'bg-black text-white shadow-md':'bg-[#F5F5F7] text-gray-500 hover:bg-gray-200'}">${day}</button>
+                `).join(''); 
+                document.getElementById('current-template-day-name').innerText=weekdays[state.currentTemplateDay]; 
+            },
+            
+            setupRealtime: () => { supabaseClient.channel('db').on('postgres_changes',{event:'*',schema:'public',table:'dishes'},app.fetchData).on('postgres_changes',{event:'*',schema:'public',table:'comments'},app.fetchData).on('postgres_changes',{event:'*',schema:'public',table:'dish_images'},app.fetchData).subscribe(); },
+
+            renderAll: () => {
+                // Populate Dropdowns
+                const populateSelect = (id) => {
+                    const sel = document.getElementById(id);
+                    const currentVal = sel.value;
+                    sel.innerHTML = '<option value="">-- 从菜品库选择 --</option>' + 
+                        state.dishLibrary.map(item => `<option value="${item.id}">${item.dish_name}</option>`).join('');
+                    sel.value = currentVal;
+                };
+                populateSelect('daily-select-dish');
+                populateSelect('tpl-select-dish');
+
+                // Render Library
+                document.getElementById('library-list').innerHTML = state.dishLibrary.map(item => `
+                    <tr class="hover:bg-gray-50 border-b border-gray-50">
+                        <td class="px-6 py-4"><img src="${item.image_url}" class="w-12 h-12 rounded-xl object-cover bg-gray-100"></td>
+                        <td class="px-6 py-4 font-semibold">${item.dish_name}</td>
+                    <td class="px-6 py-4 text-right">
+                        <button onclick="app.editLibraryItem(${item.id})" class="text-blue-500 hover:text-blue-700 mr-3 transition-colors text-lg" title="编辑"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="app.openConfirmModal(${item.id}, 'library')" class="text-apple-gray hover:text-apple-red transition-colors text-lg"><i class="fa-regular fa-trash-can"></i></button>
+                    </td>
+                    </tr>
+                `).join('');
+
+                // NEW LOGIC: Filter dishes by the date selected in the admin panel
+                const adminSelectedDate = document.getElementById('daily-date').value;
+                document.getElementById('admin-list-date-label').innerText = adminSelectedDate === state.todayStr ? "今天" : adminSelectedDate;
+
+                // Render "Today's Menu" for the Home View (Fixed to Actual Today)
+                const todayDishes = state.dishes.filter(d => d.serve_date === state.todayStr);
+                app.renderGrid('grid-breakfast', todayDishes.filter(d => d.meal === 'breakfast'), false);
+                app.renderGrid('grid-lunch', todayDishes.filter(d => d.meal === 'lunch'), false);
+                app.renderGrid('grid-dinner', todayDishes.filter(d => d.meal === 'dinner'), false);
+
+                const tmrw = new Date(); tmrw.setDate(tmrw.getDate()+1); const tmrwStr = tmrw.toISOString().split('T')[0];
+                const tmrwDishes = state.dishes.filter(d => d.serve_date === tmrwStr);
+                app.renderGrid('tmrw-grid', tmrwDishes, true);
+
+                if(state.currentView === 'stats') {
+                    // 构建从夯到拉的趣味排名分类
+                    const dishesWithAvg = state.dishes.filter(d => d.votes > 0).map(d => ({ ...d, avg: d.score / d.votes }));
+                    const categories = { hang: [], top: [], ren: [], npc: [], la: [] };
+                    dishesWithAvg.forEach(d => {
+                        if (d.avg >= 4.5) categories.hang.push(d);
+                        else if (d.avg >= 3.5) categories.top.push(d);
+                        else if (d.avg >= 2.5) categories.ren.push(d);
+                        else if (d.avg >= 1.5) categories.npc.push(d);
+                        else categories.la.push(d);
+                    });
+                    const catOrder = [
+                        { key: 'hang', title: '夯', subtitle: '顶级中的顶级，没有之一', color: 'text-red-600' },
+                        { key: 'top', title: '顶级', subtitle: '买了不亏，体验感拉满', color: 'text-orange-500' },
+                        { key: 'ren', title: '人上人', subtitle: '有亮点，但也有槽点', color: 'text-yellow-500' },
+                        { key: 'npc', title: 'NPC', subtitle: '存在感不强，可有可无', color: 'text-gray-500' },
+                        { key: 'la', title: '拉完了', subtitle: '建议退钱，直接放弃', color: 'text-gray-400' }
+                    ];
+                    const buildCard = (d, index, color) => {
+                        const avg = d.avg.toFixed(1);
+                        return `
+                        <div class="bg-white rounded-[24px] p-4 flex items-center gap-5 shadow-sm border border-gray-100 card-hover">
+                            <div class="text-2xl font-bold w-8 text-center ${color} italic rank-badge">#${index+1}</div>
+                            <img src="${d.image_url || 'https://via.placeholder.com/100?text=Food'}" class="w-16 h-16 rounded-[18px] object-cover bg-[#F5F5F7]">
+                            <div class="flex-grow">
+                                <h3 class="font-semibold text-[17px] text-[#1D1D1F]">${d.name}</h3>
+                                <div class="flex items-center gap-3 text-xs mt-1 text-gray-500 font-medium">
+                                    <span class="${color} flex items-center"><i class="fa-solid fa-star mr-1"></i> ${avg}</span>
+                                    <span>${d.votes} 次评价</span>
+                                </div>
+                            </div>
+                        </div>`;
+                    };
+                    let html = '';
+                    catOrder.forEach(cat => {
+                        const list = categories[cat.key].sort((a, b) => b.avg - a.avg);
+                        if (list.length > 0) {
+                            // limit to 10 items max per category to avoid extremely long lists
+                            const limitedList = list.slice(0, 10);
+                            html += `
+                            <div class="mb-10">
+                                <h3 class="text-2xl font-semibold ${cat.color} mb-1 flex items-center gap-2">${cat.title}</h3>
+                                <p class="text-sm text-gray-400 mb-4">${cat.subtitle}</p>
+                                ${limitedList.map((d, idx) => buildCard(d, idx, cat.color)).join('')}
+                            </div>
+                            `;
+                        }
+                    });
+                    document.getElementById('hot-list').innerHTML = html || '<p class="text-center py-16 text-gray-400">暂无评价数据，快来留下你的点评吧！</p>';
+                    // 实时评价列表
+                    document.getElementById('live-comments-list').innerHTML = state.comments.map(c => `
+                        <div class="bg-[#F5F5F7] p-5 rounded-[20px] text-sm mb-3">
+                            <div class="flex justify-between mb-2">
+                                <span class="font-semibold text-black bg-white px-2 py-1 rounded-md shadow-sm text-xs">${c.dish_name||'Dish'}</span>
+                                <span class="text-[10px] text-gray-400 font-medium">${new Date(c.created_at).toLocaleTimeString().slice(0,5)}</span>
+                            </div>
+                            <p class="text-[#1D1D1F] leading-relaxed text-[15px]">${c.text}</p>
+                        </div>`).join('');
+                }
+
+                // ADMIN LIST RENDERING (Filtered by DATE + Meal Type)
+                const renderAdminTable = (list, targetId, type) => {
+                    let filteredList = list.filter(d => state.adminFilter === 'all' || d.meal === state.adminFilter);
+                    
+                    // Specific filter for Dishes (by date)
+                    if (type === 'dish') {
+                        filteredList = filteredList.filter(d => d.serve_date === adminSelectedDate);
+                    }
+
+                    const html = filteredList.map(d => {
+                        // 计算平均评分（保留 1 位小数）；如果没有评分则使用破折号
+                        const avgRating = d.votes > 0 ? (d.score / d.votes).toFixed(1) : '—';
+                        return `
+                    <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
+                        ${d.serve_date ? `<td class="px-6 py-4 font-mono text-xs text-gray-400">${d.serve_date}</td>` : '<td class="px-6 py-4 text-xs text-gray-400">Template</td>'}
+                        <td class="px-6 py-4"><img src="${d.image_url || ''}" class="w-10 h-10 rounded-xl bg-gray-100 object-cover border border-gray-100 shadow-sm" onerror="this.style.display=\'none\'"></td>
+                        <td class="px-6 py-4 font-semibold text-[#1D1D1F]">${d.name}</td>
+                        <td class="px-6 py-4 font-semibold text-orange-500">${avgRating}</td>
+                        <td class="px-6 py-4"><span class="px-3 py-1 rounded-full text-xs font-medium ${mealColor[d.meal]}">${mealMap[d.meal]}</span></td>
+                        <td class="px-6 py-4 text-right">
+                             ${type === 'dish' ? 
+                                `<button onclick="app.promoteToTemplate(${d.id})" class="text-blue-500 hover:text-blue-700 mr-3 text-lg" title="设为模板"><i class="fa-solid fa-copy"></i></button>` 
+                                : ''}
+                            <button onclick="app.editDishItem(${d.id}, '${type}')" class="text-blue-500 hover:text-blue-700 mr-3 text-lg" title="编辑"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="app.openConfirmModal(${d.id}, '${type}')" class="text-apple-gray hover:text-apple-red transition-colors text-lg"><i class="fa-regular fa-trash-can"></i></button>
+                        </td>
+                    </tr>`;
+                    }).join('');
+                    document.getElementById(targetId).innerHTML = html || '<tr><td colspan="6" class="text-center py-8 text-gray-300 text-sm">暂无数据</td></tr>';
+                };
+
+                renderAdminTable(state.dishes, 'admin-list', 'dish');
+                renderAdminTable(state.templates.filter(t=>t.week_day===state.currentTemplateDay), 'template-list', 'template');
+
+                // 当进入反馈管理模式时，渲染用户评价列表
+                if(state.adminMode === 'feedback') {
+                    const tbody = document.getElementById('feedback-list');
+                    if (tbody) {
+                        const rows = state.reviews.map(r => {
+                            // 获取菜名（优先使用 dishes 列表中的名称，其次使用 reviews 中的 dish_name）
+                            const dish = state.dishes.find(d => d.id == r.dish_id);
+                            const dishName = dish ? dish.name : (r.dish_name || '未知菜品');
+                            const rating = parseFloat(r.rating).toFixed(1);
+                            const comment = r.comment ? r.comment : '';
+                            const timeStr = new Date(r.created_at).toLocaleString('zh-CN', { hour: '2-digit', minute: '2-digit', month: '2-digit', day: '2-digit' });
+                            return `<tr class="hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
+                                <td class="px-6 py-3 whitespace-nowrap font-medium text-[#1D1D1F]">${dishName}</td>
+                                <td class="px-6 py-3 whitespace-nowrap font-medium"><span class="text-orange-500 font-bold">${rating}</span></td>
+                                <td class="px-6 py-3 text-sm text-gray-700 max-w-xs break-words">${comment}</td>
+                                <td class="px-6 py-3 text-sm text-gray-500">${timeStr}</td>
+                                <td class="px-6 py-3 text-sm text-gray-400">${r.user_id}</td>
+                            </tr>`;
+                        }).join('');
+                        tbody.innerHTML = rows || '<tr><td colspan="5" class="text-center py-8 text-gray-300 text-sm">暂无评价数据</td></tr>';
+                    }
+                }
+            },
+
+            renderGrid: (elId, list, isPreview) => {
+                const el = document.getElementById(elId);
+                if(list.length===0) return el.innerHTML = `<div class="col-span-full py-16 text-center text-gray-300 font-medium">Nothing served</div>`;
+                el.innerHTML = list.map(d => {
+                    const avg = d.votes>0?(d.score/d.votes).toFixed(1):'0.0';
+                    const cls = isPreview?'opacity-90 grayscale-0 hover:opacity-100 transition-all duration-500':'card-hover shadow-soft'; // FIXED: Removed grayscale, kept slight opacity
+                    
+                    // 星级渲染逻辑：仅保留 5 个星星，支持整数评分
+                    let starsHtml = '';
+                    // 根据当前用户评分确定星星颜色；若用户未评分，则根据平均分取整
+                    const userRating = state.userRatings && state.userRatings[d.id] ? state.userRatings[d.id] : null;
+                    const avgRating = d.votes > 0 ? Math.round(d.score / d.votes) : 0;
+                    const ratingForUI = userRating !== null ? userRating : avgRating;
+                    // 使用从 5 到 1 的倒序迭代配合 row-reverse 实现正确的亮星顺序
+                    for(let i = 5; i >= 1; i--) {
+                        const isActive = i <= ratingForUI;
+                        const activeClass = isActive ? 'text-orange-400' : 'text-gray-200';
+                        starsHtml += `<button onclick="app.submitVote(${d.id},${i})" class="star-btn text-xl ${activeClass}" title="评分 ${i} 星"><i class="fa-solid fa-star"></i></button>`;
+                    }
+
+                    return `
+                    <div class="bg-white rounded-[32px] p-5 ${cls} relative group border border-white/60">
+                        <div class="h-48 w-full rounded-[24px] bg-[#F5F5F7] mb-5 relative overflow-hidden">
+                            <img src="${d.image_url || ''}" class="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" onerror="this.src='https://via.placeholder.com/400x300?text=TastyTrack';this.classList.add('opacity-30', 'p-10');">
+                            <div class="absolute top-3 right-3 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-xs font-bold shadow-sm border border-white/50">¥${d.price}</div>
+                            ${isPreview ? '<div class="absolute bottom-3 left-3 bg-blue-500/90 text-white text-[10px] px-2 py-1 rounded-md backdrop-blur-md shadow-sm font-bold tracking-wider">明日供应</div>' : ''}
+                        </div>
+                        <div class="flex justify-between items-start mb-3 px-1">
+                            <h3 class="font-bold text-xl text-[#1D1D1F] tracking-tight leading-tight">${d.name}</h3>
+                            <div class="flex items-center gap-1 bg-[#F5F5F7] px-2 py-1 rounded-lg">
+                                <i class="fa-solid fa-star text-orange-400 text-[10px]"></i>
+                                <span class="font-bold text-xs text-[#1D1D1F]">${avg}</span>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-center px-1">
+                            <!-- Star Interaction -->
+                            <div class="star-group">
+                                ${!isPreview ? starsHtml : '<span class="text-xs text-gray-400 font-medium">Coming Soon</span>'}
+                            </div>
+                            <button onclick="app.openCommentModal(${d.id}, '${d.name}')" class="w-10 h-10 rounded-full bg-black text-white flex items-center justify-center hover:scale-110 active:scale-95 transition-all shadow-md">
+                                <i class="fa-solid fa-pen text-xs"></i>
+                            </button>
+                        </div>
+                    </div>`;
+                }).join('');
+            }
+        };
+
+        // Event Bindings
+        document.getElementById('confirm-btn-yes').addEventListener('click', app.executeDelete);
+        document.getElementById('login-form').addEventListener('submit', app.login);
+        document.getElementById('add-library-form').addEventListener('submit', app.addDishToLibrary);
+        document.getElementById('add-daily-form').addEventListener('submit', (e) => app.addDishToSchedule(e, false));
+        document.getElementById('add-template-form').addEventListener('submit', (e) => app.addDishToSchedule(e, true));
+
+        document.addEventListener('DOMContentLoaded', app.init);
+    </script>
+</body>
+</html>
